@@ -117,6 +117,10 @@ textarea{min-height:84px;resize:vertical}
 /* ================================================================
    ХРАНИЛИЩЕ
    ================================================================ */
+/* Версия. Поднимать вместе с CACHE в sw.js при каждой правке —
+   по ней видно, получил ли телефон обновление. */
+var APP_VERSION = "1 · 22.08.2026";
+
 var KEY = "stenon_shurfy_v1";
 
 /* Проба хранилища. Если файл открыт через content:// (так его отдаёт файловый
@@ -571,6 +575,7 @@ function viewList(){
        '<button class="go" data-act="open" data-i="'+i+'">открыть</button></div>';
   });
   h+='<button class="big sec" data-act="export">Экспорт и выгрузка</button>';
+  h+='<p class="note" style="text-align:center">Stenon '+APP_VERSION+'</p>';
   return h;
 }
 
