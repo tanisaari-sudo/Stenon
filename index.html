@@ -1,0 +1,964 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="theme-color" content="#111111">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="mobile-web-app-capable" content="yes">
+<title>Stenon — описание шурфов</title>
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0}
+body{
+  font:17px/1.35 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+  background:#fff;color:#111;padding-bottom:96px;
+}
+h1{font-size:20px;margin:0}
+h2{font-size:17px;margin:22px 0 8px;padding-bottom:5px;border-bottom:2px solid #111}
+h2 .num{display:inline-block;min-width:24px;color:#888;font-weight:400}
+.wrap{padding:12px 12px 0}
+
+/* ---- верхняя панель ---- */
+.top{
+  position:sticky;top:0;z-index:20;background:#111;color:#fff;
+  padding:8px 12px;display:flex;align-items:center;gap:10px;
+}
+.top .t-title{font-weight:600;font-size:16px;flex:1;min-width:0;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.clock{font-variant-numeric:tabular-nums;font-size:19px;font-weight:700}
+.clock.paused{color:#ffb020}
+.tbtn{
+  background:#fff;color:#111;border:0;border-radius:8px;
+  padding:9px 13px;font-size:15px;font-weight:600;
+}
+.tbtn.ghost{background:#333;color:#fff}
+
+/* ---- кнопки ---- */
+button{font-family:inherit}
+.big{
+  display:block;width:100%;padding:17px;margin:10px 0;
+  font-size:18px;font-weight:600;border:0;border-radius:12px;
+  background:#111;color:#fff;
+}
+.big.sec{background:#eceae6;color:#111}
+.big.danger{background:#fff;color:#a11;border:2px solid #a11}
+.row2{display:flex;gap:8px}
+.row2>*{flex:1}
+
+/* ---- чипы ---- */
+.chips{display:flex;flex-wrap:wrap;gap:7px;margin:2px 0 4px}
+.chip{
+  border:2px solid #c9c5be;background:#fff;color:#111;
+  border-radius:10px;padding:11px 13px;font-size:15px;line-height:1.15;
+  min-height:46px;text-align:left;
+}
+.chip.on{background:#111;color:#fff;border-color:#111}
+.chip .hint{display:block;font-size:12px;color:#6b6b6b;margin-top:3px}
+.chip.on .hint{color:#c9c9c9}
+.chip.aux{border-style:dashed;color:#444;font-weight:600}
+.more{display:none;padding:8px;margin:4px 0;background:#f5f3f0;border-radius:10px}
+.more.open{display:block}
+label.f{display:block;font-weight:600;margin:14px 0 5px;font-size:15px}
+label.f .sub{font-weight:400;color:#777;font-size:13px}
+
+/* ---- поля ---- */
+input[type=text],input[type=number],textarea{
+  width:100%;padding:13px;font-size:17px;font-family:inherit;
+  border:2px solid #c9c5be;border-radius:10px;background:#fff;color:#111;
+}
+textarea{min-height:84px;resize:vertical}
+.pair{display:flex;align-items:center;gap:8px}
+.pair span{color:#777;font-size:15px}
+
+/* ---- список слоёв / шурфов ---- */
+.card{
+  border:2px solid #ddd9d3;border-radius:12px;padding:12px;margin:8px 0;
+  display:flex;align-items:center;gap:10px;
+}
+.card .n{font-size:22px;font-weight:700;min-width:38px}
+.card .m{flex:1;min-width:0;font-size:14px;color:#555}
+.card .m b{display:block;color:#111;font-size:16px;font-weight:600}
+.card .go{background:#eceae6;border:0;border-radius:8px;padding:10px 12px;font-size:15px}
+.counter{background:#f5f3f0;border-radius:12px;padding:12px;text-align:center;
+  font-size:15px;color:#555}
+.counter b{font-size:26px;display:block;color:#111}
+.note{font-size:13px;color:#777;margin:6px 0}
+.warn{background:#fff5e0;border-left:4px solid #e0a020;padding:10px;
+  border-radius:0 8px 8px 0;font-size:14px;margin:10px 0}
+.saved{position:fixed;bottom:12px;right:12px;background:#111;color:#fff;
+  padding:7px 12px;border-radius:20px;font-size:13px;opacity:0;
+  transition:opacity .25s;pointer-events:none;z-index:50}
+.saved.show{opacity:.85}
+.alarm{background:#a11;color:#fff;padding:12px;border-radius:10px;
+  font-size:15px;font-weight:600;margin:8px 0;line-height:1.4}
+.alarm b{font-weight:700;word-break:break-all}
+.hidden{display:none}
+#exportBox{min-height:220px;font-size:12px;font-family:ui-monospace,Menlo,Consolas,monospace}
+</style>
+</head>
+<body>
+
+<div class="top">
+  <button class="tbtn ghost" id="backBtn">‹</button>
+  <div class="t-title" id="topTitle">Stenon</div>
+  <div class="clock" id="clock"></div>
+  <button class="tbtn" id="timerBtn"></button>
+</div>
+
+<div class="wrap" id="app"></div>
+<div class="saved" id="saved">сохранено</div>
+
+<script>
+"use strict";
+
+/* ================================================================
+   ХРАНИЛИЩЕ
+   ================================================================ */
+var KEY = "stenon_shurfy_v1";
+
+/* Проба хранилища. Если файл открыт через content:// (так его отдаёт файловый
+   менеджер Android), localStorage может быть недоступен, и записи молча пропадут.
+   Тогда показываем красную полосу на каждом экране. */
+var storageOK = (function(){
+  try{
+    localStorage.setItem("__probe__","1");
+    var ok = localStorage.getItem("__probe__")==="1";
+    localStorage.removeItem("__probe__");
+    return ok;
+  }catch(e){ return false; }
+})();
+
+var S = load();
+
+function load(){
+  try{
+    var raw = localStorage.getItem(KEY);
+    if(raw) return JSON.parse(raw);
+  }catch(e){}
+  return { shurfy: [], custom: {}, plan: 97 };
+}
+function save(){
+  try{
+    localStorage.setItem(KEY, JSON.stringify(S));
+    flash();
+  }catch(e){
+    alert("НЕ СОХРАНИЛОСЬ: "+e.message+"\nСрочно выгрузите данные через «Экспорт».");
+  }
+}
+var flashT;
+function flash(){
+  var el=document.getElementById("saved");
+  el.classList.add("show");
+  clearTimeout(flashT);
+  flashT=setTimeout(function(){el.classList.remove("show");},700);
+}
+
+/* ================================================================
+   СЛОВАРИ
+   Порядок и шкалы — по razrez-algorithm.md (стандарт Полемона).
+   more: [термин, подсказка]
+   ================================================================ */
+var V = {
+
+relief:{main:[
+ "пойма","первая надпойменная терраса","вторая надпойменная терраса и выше",
+ "склон верхняя часть","склон средняя часть","склон нижняя часть",
+ "подножие склона","вершина сопки","привершинная поверхность","водораздел",
+ "распадок, лог","понижение, мочажина","техногенно нарушенная поверхность"],
+ more:[
+ ["нагорная терраса","ступень на склоне, выровненная площадка с курумом"],
+ ["курум, каменное поле","сплошная россыпь глыб"],
+ ["каменный поток","курум, вытянутый языком вниз по склону"],
+ ["солифлюкционный склон","грунт сполз языками, слои в разрезе смяты"],
+ ["натёчная терраса","валик или ступень от сползания грунта"],
+ ["делювиальный шлейф","пологий наносной шлейф у подножия"],
+ ["конус выноса","наносной веер у выхода распадка"],
+ ["структурные грунты","каменные кольца, полосы, пятна-медальоны"],
+ ["гольцовая поверхность","выровненная каменистая вершина без растительности"],
+ ["скальный выход, останец",""],
+ ["перевальная седловина",""],
+ ["наледная поляна","голая галечная площадка на месте зимней наледи"],
+ ["булгуннях","бугор пучения с ледяным ядром, он же пинго"],
+ ["хасырей","котловина спущенного озера"],
+ ["термокарстовая западина","просадка от вытаивания льда"],
+ ["байджарах","бугорок-останец между вытаявшими ледяными жилами"],
+ ["полигональная тундра","сетка морозобойных трещин"],
+ ["морозобойная трещина, её край",""]]},
+
+water:{main:[
+ "нет водотока поблизости","постоянный водоток, пойма","постоянный водоток, борт",
+ "временный водоток, ложбина стока","сухое русло, сухой лог","приустьевой участок",
+ "озеро, старица","заболоченное понижение","наледь"],more:[]},
+
+exposure:{main:["С","СВ","В","ЮВ","Ю","ЮЗ","З","СЗ","не применимо"],more:[]},
+
+surface:{main:["ровная","слабонаклонная","наклонная","бугристая","кочковатая",
+ "полигональная","нарушенная"],more:[]},
+
+/* Шаг 0 стандарта: растительность. На фото стенки Полемон её не увидит. */
+vegType:{main:[
+ "тундра кустарничковая","тундра мохово-лишайниковая","тундра кочкарная пушицевая",
+ "ерник, ольховник, ивняк","разнотравно-злаковый луг","лиственничное редколесье",
+ "заросли кедрового стланика","осоково-моховое болото","без растительности"],
+ more:[
+ ["дриадовая тундра","куропаточья трава, щебнистые пятна"],
+ ["пятнистая тундра","голые пятна грунта среди растительности"],
+ ["нивальная лужайка","у поздно стаивающего снежника"],
+ ["приречные ивняки, галечник",""]]},
+
+vegCover:{main:["сплошное","густое","разреженное","пятнами","отсутствует"],more:[]},
+
+moisture:{main:["дренированное","атмосферное","грунтовое","застойное"],more:[]},
+
+disturb:{main:["не выявлено","тропа, дорога","след вездехода","карьер, выемка",
+ "насыпь","кострище","современный мусор","старая шурфовка"],more:[]},
+
+conditions:{main:[
+ "солнечно","пасмурно","дождь","снег","туман","сильный ветер",
+ "стенка сухая","стенка влажная","стенка мокрая","вода в шурфе",
+ "мерзлота вскрыта","мерзлота не достигнута",
+ "свет прямой","свет боковой","свет рассеянный","сумерки",
+ "утро","день","вечер"],more:[]},
+
+/* ---- слой ---- */
+granulo:{main:[
+ "песок","супесь","лёгкий суглинок","средний суглинок","тяжёлый суглинок",
+ "глина","торф","дресва, щебень","галечник"],
+ more:[
+ ["алеврит","пылеватый, тоньше песка, не пластичный как глина"],
+ ["гравий",""],
+ ["валунник",""],
+ ["суглинок с дресвой","мелкозём с обломками"],
+ ["элювий","продукты разрушения породы на месте, неокатанные"],
+ ["делювий","снесённый по склону, слабо сортированный"],
+ ["органо-минеральная масса","переход торфа в минеральный грунт"],
+ ["оторфованный суглинок",""],
+ ["дерново-гумусный горизонт","верхняя дернина, для слоя 1"]]},
+
+color:{main:[
+ "коричневый","тёмно-коричневый","светло-коричневый","серый","тёмно-серый",
+ "светло-серый","бурый","чёрный","сизый","бежевый","жёлтый","охристый",
+ "рыжий, ржавый"],
+ more:[
+ ["палевый","бледно-жёлтый с сероватым"],
+ ["оливковый",""],
+ ["голубовато-серый","признак глубокого оглеения"],
+ ["пёстрый, мраморовидный","чередование сизого и охристого — переменное увлажнение"],
+ ["тёмно-бурый до чёрного","насыщенный органикой"],
+ ["желтовато-бурый",""],
+ ["буро-серый",""]]},
+
+colorMod:{main:["однородный","с пятнами","с прожилками","с потёками",
+ "со следами ожелезнения","со следами оглеения","с примазками"],more:[]},
+
+colorState:{main:["во влажном состоянии","в подсохшем состоянии"],more:[]},
+
+/* Шкала сложения по стандарту + мёрзлый для Чукотки */
+density:{main:["рыхлый","рассыпчатый","мягкий","уплотнённый","плотный",
+ "очень плотный","мёрзлый"],more:[]},
+
+/* Строго шкальная влажность. «Насыщенный водой» вне шкалы — исключён. */
+wet:{main:["сухой","свежий","влажный","сырой","мокрый"],more:[]},
+
+aggr:{main:["агрегаты не выражены","зернистая","комковатая","глыбистая",
+ "массивная","плитчатая","ореховатая"],
+ more:[
+ ["призматическая","столбики, вытянутые вертикально"],
+ ["столбчатая","призмы с округлыми верхушками"],
+ ["листоватая","очень тонкие горизонтальные пластины"],
+ ["чешуйчатая","тонкие изогнутые пластинки с блеском"],
+ ["порошистая","рассыпается в пыль"],
+ ["зернисто-комковатая","смешанная"],
+ ["рассыпчатая","отдельные зёрна, не связаны"],
+ ["сетчатая, шлировая криогенная","ледяные прожилки образуют сетку в мёрзлом грунте"],
+ ["линзовидно-слоистая криогенная","ледяные линзы горизонтально"]]},
+
+aggrSize:{main:["мелко-","средне-","крупно-"],more:[]},
+aggrExpr:{main:["хорошо выражена","слабо выражена","неясная"],more:[]},
+
+texture:{main:["однородная","горизонтально слоистая","с прослойками",
+ "пятнистая","линзовидная"],
+ more:[
+ ["косо слоистая","слойки под углом — признак активного течения"],
+ ["волнисто слоистая",""],
+ ["флазерная","тонкие прослойки глины в волнах песка"],
+ ["ленточная","правильное чередование тонких пар слойков"],
+ ["массивная","без всякой внутренней организации"],
+ ["деформированная, смятая","следы солифлюкции или мерзлотных подвижек"],
+ ["криотурбированная","слои перемешаны мерзлотой, «языки» и затёки"]]},
+
+incl:{main:["включений нет","корни живые","корни отмершие","растительные остатки",
+ "углистые включения","галька","дресва, щебень","кости","современный мусор"],
+ more:[
+ ["древесина, ветки",""],
+ ["раковины",""],
+ ["обломки породы неокатанные",""],
+ ["прокалённый грунт",""],
+ ["охра",""],
+ ["керамика",""],
+ ["кремень, отщепы",""]]},
+
+inclAbund:{main:["единичные","редкие","частые","обильные"],more:[]},
+inclDistr:{main:["равномерно распределены","в кровле","в подошве","гнёздами",
+ "неравномерно"],more:[]},
+
+/* Отдельная позиция 6 стандарта. В ТЗ этих признаков не было как категории. */
+newform:{main:["новообразований нет"],
+ more:[
+ ["карбонаты, белоглазка","белёсые стяжения, вскипают от кислоты"],
+ ["карбонатный псевдомицелий","тонкие белые нити по порам"],
+ ["железистые конкреции","плотные рыжие стяжения"],
+ ["охристые примазки","ржавые мажущиеся пятна"],
+ ["ортштейны","мелкие тёмные железисто-марганцевые дробинки"],
+ ["марганцевые плёнки и точки","чёрные пятна, мажутся"],
+ ["белёсая кремнезёмистая присыпка","признак оподзоливания"],
+ ["глеевые пятна и языки","сизые, зеленоватые"],
+ ["гумусовые затёки и языки","тёмные языки вниз по профилю"],
+ ["криогенные шлиры","ледяные прожилки"]]},
+
+/* Шкала резкости привязана к сантиметрам — иначе Полемон выпишет medium */
+bndSharp:{main:["резкая (менее 2 см)","заметная (2–5 см)","постепенная (5–25 см)",
+ "слабозаметная (более 25 см)","не прослеживается"],more:[]},
+
+bndForm:{main:["ровная","слабоволнистая","волнистая","карманообразная",
+ "языковатая","затёчная","прерывистая"],
+ more:[
+ ["клиновидная","вертикальный клин — след морозобойной трещины"],
+ ["размытая эрозионная",""]]},
+
+stopReason:{main:[
+ "по суждению: слой однороден, без АМ",
+ "вышли на мерзлоту (ММГ)",
+ "вскрылись грунтовые воды (ГГВ)",
+ "заполнение водой","очень плотный грунт, глыбы"],more:[]},
+
+shurfSize:{main:["1×1 м","1×2 м","2×2 м"],more:[]},
+wall:{main:["северной","восточной","южной","западной"],more:[]},
+extraShots:{main:["крупный план","боковой свет","масштабная рейка",
+ "эталон цвета","излом","стенка целиком","мокрая и подсохшая"],more:[]},
+fatigue:{main:["свежая","нормально","устала","очень устала"],more:[]}
+};
+
+/* ================================================================
+   НАВИГАЦИЯ
+   ================================================================ */
+var view = {name:"list", si:null, li:null};
+
+function go(name, si, li){
+  view = {name:name, si:(si===undefined?view.si:si), li:(li===undefined?view.li:li)};
+  render();
+  window.scrollTo(0,0);
+}
+function cur(){ return S.shurfy[view.si]; }
+
+/* ================================================================
+   ТАЙМЕР
+   ================================================================ */
+function tState(sh){
+  if(!sh) return {ms:0, run:false, pause:0};
+  var t = sh.timer;
+  var ms = t.acc;
+  if(t.startedAt) ms += Date.now() - t.startedAt;
+  var p = t.pauseAcc;
+  if(t.pausedAt) p += Date.now() - t.pausedAt;
+  return {ms:ms, run:!!t.startedAt, pause:p, started:!!(t.acc||t.startedAt)};
+}
+function fmt(ms){
+  var s = Math.floor(ms/1000);
+  var m = Math.floor(s/60), h = Math.floor(m/60);
+  s%=60; m%=60;
+  return (h?h+":"+String(m).padStart(2,"0"):m)+":"+String(s).padStart(2,"0");
+}
+function timerStart(){
+  var sh=cur(); if(!sh) return;
+  if(sh.timer.startedAt) return;
+  if(sh.timer.pausedAt){ sh.timer.pauseAcc += Date.now()-sh.timer.pausedAt; sh.timer.pausedAt=0; }
+  sh.timer.startedAt = Date.now();
+  wakeOn(); save(); tick();
+}
+function timerPause(){
+  var sh=cur(); if(!sh||!sh.timer.startedAt) return;
+  sh.timer.acc += Date.now()-sh.timer.startedAt;
+  sh.timer.startedAt = 0;
+  sh.timer.pausedAt = Date.now();
+  save(); tick();
+}
+function timerStop(){
+  var sh=cur(); if(!sh) return;
+  if(sh.timer.startedAt){ sh.timer.acc += Date.now()-sh.timer.startedAt; sh.timer.startedAt=0; }
+  if(sh.timer.pausedAt){ sh.timer.pauseAcc += Date.now()-sh.timer.pausedAt; sh.timer.pausedAt=0; }
+  wakeOff(); save();
+}
+var tickT;
+function tick(){
+  clearTimeout(tickT);
+  var c=document.getElementById("clock"), b=document.getElementById("timerBtn");
+  var sh = (view.name==="list"||view.name==="export") ? null : cur();
+  if(!sh){ c.textContent=""; b.classList.add("hidden"); return; }
+  var t=tState(sh);
+  b.classList.remove("hidden");
+  c.textContent = fmt(t.ms);
+  c.className = "clock" + (t.run?"":" paused");
+  b.textContent = t.run ? "пауза" : (t.started ? "пуск" : "старт");
+  b.onclick = t.run ? timerPause : timerStart;
+  if(t.run) tickT=setTimeout(tick,1000);
+}
+
+/* Экран не гаснет. Работает только в защищённом контексте (https);
+   с карты памяти по file:// молча не сработает — выставьте тайм-аут экрана в настройках. */
+var wl=null;
+function wakeOn(){
+  try{ if(navigator.wakeLock) navigator.wakeLock.request("screen").then(function(x){wl=x;},function(){}); }catch(e){}
+}
+function wakeOff(){ try{ if(wl){wl.release(); wl=null;} }catch(e){} }
+document.addEventListener("visibilitychange",function(){
+  if(document.visibilityState==="visible"){
+    var sh=(view.name==="list"||view.name==="export")?null:cur();
+    if(sh && sh.timer.startedAt) wakeOn();
+    tick();
+  }
+});
+
+/* ================================================================
+   МОДЕЛИ
+   ================================================================ */
+function newShurf(num){
+  return {
+    num:num, date:new Date().toISOString(),
+    timer:{acc:0,startedAt:0,pauseAcc:0,pausedAt:0},
+    conditions:[], layers:[],
+    relief:"",water:"",exposure:"",slope:"",
+    surface:"",vegType:"",vegCover:"",vegDom:"",moisture:"",disturb:"",
+    shurfSize:"1×1 м",oriented:true,wall:"",
+    totalDepth:"",thaw:"",ggv:"",stopReason:"",
+    cultural:"нет",finds:0,extraShots:[],fatigue:"",recult:false,note:"",
+    closed:false
+  };
+}
+function newLayer(prev){
+  return {
+    granulo:[],color:"",colorMod:[],colorState:"во влажном состоянии",
+    density:"",wet:"",
+    aggr:"",aggrSize:"",aggrExpr:"",
+    texture:"",interMm:"",interChar:"",
+    incl:[],rootsDiam:"",inclAbund:"",inclDistr:"",
+    newform:[],hcl:false,
+    last:false,bndSharp:"",bndForm:"",
+    thickFrom:"",thickTo:"",
+    depthFrom:(prev&&prev.depthTo!==""?prev.depthTo:""),depthTo:"",
+    note:""
+  };
+}
+
+/* ================================================================
+   РЕНДЕР ПОЛЕЙ
+   ================================================================ */
+function esc(s){
+  return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;")
+                  .replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+}
+function isOn(val, v, multi){
+  return multi ? (val||[]).indexOf(v)>=0 : val===v;
+}
+
+/* какие блоки «ещё» сейчас раскрыты — переживает перерисовку */
+var openMore = {};
+
+/* поле выбора: key — путь к свойству объекта, vocab — имя словаря */
+function pick(label, key, vocabName, multi, sub){
+  var vc = V[vocabName];
+  var obj = target();
+  var val = obj[key];
+  var custom = S.custom[vocabName]||[];
+  /* выбранное из «ещё» показываем и в основном ряду: иначе выбор не виден,
+     когда блок свёрнут */
+  var chosen = multi ? (val||[]) : (val?[val]:[]);
+  var raised = chosen.filter(function(t){
+    return vc.main.indexOf(t)<0 && custom.indexOf(t)<0;
+  });
+  var h = '<label class="f">'+esc(label)+(sub?' <span class="sub">'+esc(sub)+'</span>':'')+'</label>';
+  h += '<div class="chips">';
+  vc.main.concat(custom).concat(raised).forEach(function(t){
+    h += '<button class="chip'+(isOn(val,t,multi)?' on':'')+'" data-pick="'+esc(key)+
+         '" data-val="'+esc(t)+'" data-multi="'+(multi?1:0)+'">'+esc(t)+'</button>';
+  });
+  if(vc.more.length)
+    h += '<button class="chip aux" data-more="'+esc(vocabName)+'">ещё ▾</button>';
+  h += '<button class="chip aux" data-own="'+esc(vocabName)+'" data-key="'+esc(key)+
+       '" data-multi="'+(multi?1:0)+'">своё +</button>';
+  h += '</div>';
+  if(vc.more.length){
+    h += '<div class="more'+(openMore[vocabName]?' open':'')+'" data-morebox="'+esc(vocabName)+'"><div class="chips">';
+    vc.more.forEach(function(p){
+      h += '<button class="chip'+(isOn(val,p[0],multi)?' on':'')+'" data-pick="'+esc(key)+
+           '" data-val="'+esc(p[0])+'" data-multi="'+(multi?1:0)+'">'+esc(p[0])+
+           (p[1]?'<span class="hint">'+esc(p[1])+'</span>':'')+'</button>';
+    });
+    h += '</div></div>';
+  }
+  return h;
+}
+function num(label, key, ph){
+  var v = target()[key];
+  return '<label class="f">'+esc(label)+'</label>'+
+    '<input type="number" inputmode="decimal" data-num="'+esc(key)+'" value="'+esc(v===undefined?"":v)+
+    '" placeholder="'+esc(ph||"")+'">';
+}
+function pairNum(label, k1, k2){
+  var o=target();
+  return '<label class="f">'+esc(label)+'</label><div class="pair">'+
+   '<input type="number" inputmode="decimal" data-num="'+esc(k1)+'" value="'+esc(o[k1])+'" placeholder="от">'+
+   '<span>—</span>'+
+   '<input type="number" inputmode="decimal" data-num="'+esc(k2)+'" value="'+esc(o[k2])+'" placeholder="до">'+
+   '</div>';
+}
+function txt(label, key, ph, area){
+  var v=target()[key]||"";
+  var l='<label class="f">'+esc(label)+'</label>';
+  return l + (area
+    ? '<textarea data-txt="'+esc(key)+'" placeholder="'+esc(ph||"")+'">'+esc(v)+'</textarea>'
+    : '<input type="text" data-txt="'+esc(key)+'" value="'+esc(v)+'" placeholder="'+esc(ph||"")+'">');
+}
+function toggle(label, key){
+  var v=target()[key];
+  return '<label class="f">'+esc(label)+'</label><div class="chips">'+
+   '<button class="chip'+(v?' on':'')+'" data-bool="'+esc(key)+'" data-b="1">да</button>'+
+   '<button class="chip'+(!v?' on':'')+'" data-bool="'+esc(key)+'" data-b="0">нет</button></div>';
+}
+
+/* объект, который сейчас редактируется */
+var _target=null;
+function target(){ return _target; }
+
+/* ================================================================
+   ЭКРАНЫ
+   ================================================================ */
+function render(){
+  var app=document.getElementById("app");
+  var back=document.getElementById("backBtn");
+  var title=document.getElementById("topTitle");
+  var y=window.scrollY;                       /* не терять место при каждом нажатии */
+  back.style.visibility = (view.name==="list") ? "hidden" : "visible";
+
+  var alarm = storageOK ? "" :
+    '<div class="alarm">ХРАНИЛИЩЕ НЕДОСТУПНО — записи не сохранятся.<br>' +
+    'Откройте Stenon с домашнего экрана или по ссылке в браузере, ' +
+    'а не из файлового менеджера.</div>';
+
+  if(view.name==="list"){ title.textContent="Stenon"; app.innerHTML=alarm+viewList(); }
+  else if(view.name==="shurf"){ title.textContent="Шурф "+cur().num; app.innerHTML=alarm+viewShurf(); }
+  else if(view.name==="layer"){ title.textContent="Шурф "+cur().num+" · слой "+(view.li+1); app.innerHTML=alarm+viewLayer(); }
+  else if(view.name==="finish"){ title.textContent="Шурф "+cur().num+" · закрытие"; app.innerHTML=alarm+viewFinish(); }
+  else if(view.name==="export"){ title.textContent="Экспорт"; app.innerHTML=alarm+viewExport(); }
+  window.scrollTo(0,y);
+  tick();
+}
+
+function viewList(){
+  var done=S.shurfy.filter(function(x){return x.closed;}).length;
+  var h='<div class="counter"><b>'+done+" из "+S.plan+"</b>шурфов закрыто · всего записей: "+S.shurfy.length+'</div>';
+  h+='<button class="big" data-act="new">+ Новый шурф</button>';
+  if(!S.shurfy.length) h+='<p class="note">Пусто. Заведите первый шурф.</p>';
+  S.shurfy.slice().reverse().forEach(function(sh){
+    var i=S.shurfy.indexOf(sh), t=tState(sh);
+    h+='<div class="card"><div class="n">'+esc(sh.num)+'</div><div class="m"><b>'+
+       (sh.closed?"закрыт":"в работе")+'</b>'+
+       new Date(sh.date).toLocaleDateString("ru-RU")+" · слоёв "+sh.layers.length+
+       " · "+fmt(t.ms)+'</div>'+
+       '<button class="go" data-act="open" data-i="'+i+'">открыть</button></div>';
+  });
+  h+='<button class="big sec" data-act="export">Экспорт и выгрузка</button>';
+  return h;
+}
+
+function viewShurf(){
+  var sh=cur(); _target=sh;
+  var t=tState(sh);
+  var h='<h1>Шурф '+esc(sh.num)+'</h1>';
+  h+='<p class="note">'+new Date(sh.date).toLocaleString("ru-RU")+'</p>';
+  if(!t.started){
+    h+='<div class="warn">Рельеф, растительность и обстановку заполняете в конце, ' +
+       'на экране закрытия. Сейчас — только запустить таймер и описывать слои сверху вниз.</div>';
+    h+='<button class="big" data-act="start">Начать описание</button>';
+  }
+  h+=pick("Условия","conditions","conditions",true,"можно отметить позже");
+  h+='<h2>Слои</h2>';
+  sh.layers.forEach(function(L,i){
+    var s=[L.granulo.join(", "),L.color].filter(Boolean).join(" · ");
+    h+='<div class="card"><div class="n">'+(i+1)+'</div><div class="m"><b>'+
+       (esc(s)||"не описан")+'</b>'+
+       (L.thickFrom!==""?"мощность "+esc(L.thickFrom)+(L.thickTo!==""?"–"+esc(L.thickTo):"")+" см":"")+
+       (L.last?" · последний":"")+'</div>'+
+       '<button class="go" data-act="layer" data-i="'+i+'">открыть</button></div>';
+  });
+  h+='<button class="big" data-act="addlayer">+ Слой '+(sh.layers.length+1)+'</button>';
+  h+='<button class="big sec" data-act="finish">Завершить шурф</button>';
+  return h;
+}
+
+function viewLayer(){
+  var sh=cur(), L=sh.layers[view.li]; _target=L;
+  var h='<h1>Слой '+(view.li+1)+'</h1>';
+  h+='<p class="note">Порядок полей — как в стандарте, по которому работает Полемон.</p>';
+
+  h+='<h2><span class="num">1</span>Грунт и цвет</h2>';
+  h+=pick("Гранулометрический состав","granulo","granulo",true);
+  h+=pick("Цвет","color","color",false,"обязательно с оттенком");
+  h+=pick("Модификатор окраски","colorMod","colorMod",true);
+  h+=pick("Состояние при определении цвета","colorState","colorState",false,
+          "стандарт требует влажное; Полемон по фото видит другое");
+
+  h+='<h2><span class="num">2</span>Плотность и влажность</h2>';
+  h+=pick("Плотность","density","density",false,"по ножу");
+  h+=pick("Влажность","wet","wet",false,"только по шкале");
+
+  h+='<h2><span class="num">3</span>Агрегаты</h2>';
+  h+=pick("Структура агрегатов","aggr","aggr",false);
+  if(L.aggr && L.aggr!=="агрегаты не выражены"){
+    h+=pick("Размер","aggrSize","aggrSize",false);
+    h+=pick("Выраженность","aggrExpr","aggrExpr",false);
+  }
+
+  h+='<h2><span class="num">4</span>Текстура</h2>';
+  h+=pick("Текстура","texture","texture",false,"строение слоя, не агрегаты");
+  if(/слоист|прослойк|линзов|ленточ|флазер/.test(L.texture||"")){
+    h+=num("Мощность прослоек, мм","interMm","3–7");
+    h+=txt("Характер прослоек","interChar","чередование светлых и тёмных");
+  }
+
+  h+='<h2><span class="num">5</span>Включения</h2>';
+  h+=pick("Включения","incl","incl",true);
+  if(L.incl.length && L.incl.indexOf("включений нет")<0){
+    if(L.incl.some(function(x){return /корни/.test(x);}))
+      h+=num("Диаметр корней, мм","rootsDiam","1–5");
+    h+=pick("Количество","inclAbund","inclAbund",false);
+    h+=pick("Распределение","inclDistr","inclDistr",false);
+  }
+
+  h+='<h2><span class="num">6</span>Новообразования</h2>';
+  h+=pick("Новообразования","newform","newform",true,
+          "продукты почвообразования — отдельно от включений");
+  h+=toggle("Вскипает от HCl","hcl");
+
+  h+='<h2><span class="num">7</span>Нижняя граница</h2>';
+  h+=toggle("Это последний слой (подошва не видна)","last");
+  if(!L.last){
+    h+=pick("Резкость","bndSharp","bndSharp",false,"ширина переходной зоны");
+    h+=pick("Форма","bndForm","bndForm",false);
+  }else{
+    h+='<div class="warn">Для последнего слоя нижняя граница не описывается. ' +
+       'В отчёт пойдёт «слой однороден по составу на всю видимую мощность». ' +
+       'Причину остановки выборки укажете на экране закрытия.</div>';
+  }
+
+  h+='<h2><span class="num">8</span>Мощность и глубина</h2>';
+  h+=pairNum("Мощность, см","thickFrom","thickTo");
+  h+=pairNum("Глубина кровли и подошвы от дневной поверхности, см","depthFrom","depthTo");
+
+  h+='<h2><span class="num">9</span>Заметка</h2>';
+  h+=txt("Свободный текст","note","можно надиктовать голосовым вводом клавиатуры",true);
+
+  h+='<button class="big" data-act="toshurf">Готово, к списку слоёв</button>';
+  h+='<div class="row2"><button class="big sec" data-act="addlayer">+ Следующий слой</button></div>';
+  h+='<button class="big danger" data-act="dellayer">Удалить слой '+(view.li+1)+'</button>';
+  return h;
+}
+
+function viewFinish(){
+  var sh=cur(); _target=sh;
+  var h='<h1>Закрытие шурфа '+esc(sh.num)+'</h1>';
+  h+='<div class="warn">Всё, что ниже, Полемон по фотографии стенки не увидит. ' +
+     'Это и есть тот минимум, который может дать только человек в поле.</div>';
+
+  h+='<h2>Точка наблюдения</h2>';
+  h+=pick("Форма рельефа","relief","relief",false);
+  h+=num("Уклон, градусы","slope","0");
+  h+=pick("Экспозиция склона","exposure","exposure",false);
+  h+=pick("Близость к водотоку","water","water",false);
+  h+=pick("Поверхность","surface","surface",false);
+
+  h+='<h2>Растительность</h2>';
+  h+=pick("Тип сообщества","vegType","vegType",false);
+  h+=pick("Проективное покрытие","vegCover","vegCover",false);
+  h+=txt("Доминанты","vegDom","кассиопея, дриада, осока");
+  h+=pick("Увлажнение поверхности","moisture","moisture",false);
+  h+=pick("Антропогенная нарушенность","disturb","disturb",false);
+
+  h+='<h2>Шурф</h2>';
+  h+=pick("Размер","shurfSize","shurfSize",false);
+  h+=toggle("Ориентирован по сторонам света","oriented");
+  h+=pick("Стратиграфия фиксировалась по стене","wall","wall",false,
+          "нужно, чтобы связать фото со слоями");
+  h+=num("Общая мощность выборки, см","totalDepth","");
+  h+=num("Глубина сезонного протаивания, см","thaw","если вскрыта мерзлота");
+  h+=num("Глубина грунтовых вод, см","ggv","если вскрылись");
+  h+=pick("Причина остановки выборки","stopReason","stopReason",false);
+  h+=toggle("Рекультивирован","recult");
+
+  h+='<h2>Результат</h2>';
+  h+=pick("Признаки культурного слоя","cultural","cultural",false);
+  h+=num("Находок, шт","finds","0");
+  h+=pick("Доснимала специально для Полемона","extraShots","extraShots",true,
+          "пусто = не доснимала");
+  h+=pick("Самооценка усталости","fatigue","fatigue",false);
+  h+=txt("Заметка по шурфу","note","",true);
+
+  h+='<button class="big" data-act="close">Закрыть шурф</button>';
+  h+='<button class="big sec" data-act="toshurf">Назад к слоям</button>';
+  return h;
+}
+
+/* «Признаки культурного слоя» — маленький словарь, объявлен здесь */
+V.cultural={main:["нет","есть"],more:[]};
+
+function viewExport(){
+  var h='<h1>Экспорт</h1>';
+  h+='<p class="note">Делайте это каждый вечер. Файл уходит в загрузки телефона.</p>';
+  h+='<button class="big" data-act="dlcsv">Скачать CSV (строка на слой)</button>';
+  h+='<button class="big" data-act="dljson">Скачать JSON (всё целиком)</button>';
+  h+='<h2>Запасной путь</h2>';
+  h+='<p class="note">Если скачивание не сработало — нажмите, выделите всё и отправьте себе ' +
+     'в мессенджер или почту. Это надёжнее любой кнопки.</p>';
+  h+='<div class="row2"><button class="big sec" data-act="showcsv">Показать CSV</button>' +
+     '<button class="big sec" data-act="showjson">Показать JSON</button></div>';
+  h+='<textarea id="exportBox" placeholder="здесь появится текст"></textarea>';
+  h+='<h2>Опасная зона</h2>';
+  h+='<button class="big danger" data-act="wipe">Стереть все данные</button>';
+  return h;
+}
+
+/* ================================================================
+   СБОРКА СТРОКИ В ФОРМАТЕ ПОЛЕМОНА (только для экспорта)
+   ================================================================ */
+/* согласование по роду: «супесь бежевая, рыхлая» вместо «супесь бежевый, рыхлый».
+   Работает только с прилагательными; существительные под шаблон не попадают. */
+function isFem(head){
+  var w=(head||"").split(/[\s,]+/)[0]||"";
+  return /(ь|а|я)$/.test(w);
+}
+function femize(s){
+  /* \b в JS не работает после кириллицы — конец слова ловим отрицательным просмотром */
+  return String(s).replace(/([А-Яа-яЁё]+?)(ый|ой|ий)(?![А-Яа-яЁё])/g, function(m, stem, end){
+    if(end==="ий") return stem + (/[гкхжшчщ]$/.test(stem) ? "ая" : "яя");
+    return stem + "ая";
+  });
+}
+function cap(s){ return s ? s.charAt(0).toUpperCase()+s.slice(1) : s; }
+
+function polemonLine(L){
+  var p=[];
+  var g=L.granulo.join(", ");
+  var fem=isFem(g);
+  var col=fem?femize(L.color):L.color;
+  var mods=L.colorMod.map(function(x){return fem?femize(x):x;});
+  var head=[g,col].filter(Boolean).join(" ");
+  if(mods.length) head += ", " + mods.join(", ");
+  if(head) p.push(cap(head)+".");
+  var dw=[L.density,L.wet].filter(Boolean).map(function(x){return fem?femize(x):x;}).join(", ");
+  if(dw) p.push(cap(dw)+".");
+  if(L.aggr) p.push(L.aggr==="агрегаты не выражены" ? "Агрегаты не выражены."
+    : ("Агрегаты: "+[L.aggrSize,L.aggr,L.aggrExpr].filter(Boolean).join(" ")+"."));
+  if(L.texture){
+    var tx="Текстура "+L.texture;
+    if(L.interChar||L.interMm)
+      tx+=", выражена отчётливо: "+(L.interChar||"прослойки")+
+          (L.interMm?" шириной "+L.interMm+" мм":"");
+    p.push(tx+".");
+  }
+  if(L.incl.length){
+    if(L.incl.indexOf("включений нет")>=0) p.push("Включений нет.");
+    else p.push("Включения: "+L.incl.join(", ")+
+      (L.rootsDiam?", диаметром "+L.rootsDiam+" мм":"")+
+      (L.inclAbund?", "+L.inclAbund:"")+
+      (L.inclDistr?", "+L.inclDistr:"")+".");
+  }
+  if(L.newform.length && L.newform.indexOf("новообразований нет")<0)
+    p.push("Новообразования: "+L.newform.join(", ")+".");
+  if(L.hcl) p.push("Вскипает от HCl.");
+  if(L.last) p.push("Слой однороден по составу на всю видимую мощность.");
+  else if(L.bndSharp||L.bndForm)
+    p.push("Нижняя граница "+[L.bndSharp.replace(/\s*\(.*?\)/,""),L.bndForm]
+      .filter(Boolean).join(", ")+".");
+  return p.join(" ");
+}
+
+/* ================================================================
+   ЭКСПОРТ
+   ================================================================ */
+var COLS=["номер_шурфа","дата","форма_рельефа","уклон_град","экспозиция","водоток",
+"поверхность","растительность_тип","проективное_покрытие","доминанты",
+"увлажнение","нарушенность","размер_шурфа","ориентирован_по_сторонам","стена_стратиграфии",
+"условия","время_описания_сек","время_пауз_сек","усталость","доснимала_для_полемона",
+"общая_мощность_см","протаивание_см","ггв_см","причина_остановки","культурный_слой",
+"находок","рекультивирован","заметка_шурфа",
+"номер_слоя","грансостав","цвет","цвет_модификатор","цвет_состояние",
+"плотность","влажность","агрегаты","агрегаты_размер","агрегаты_выраженность",
+"текстура","прослойки_мм","прослойки_характер",
+"включения","корни_диаметр_мм","включения_обилие","включения_распределение",
+"новообразования","hcl","последний_слой","граница_резкость","граница_форма",
+"мощность_от","мощность_до","глубина_от","глубина_до","заметка_слоя","строка_полемона"];
+
+function cell(v){
+  if(v===undefined||v===null) return "";
+  if(Array.isArray(v)) v=v.join(" | ");
+  v=String(v);
+  return /[;"\n]/.test(v) ? '"'+v.replace(/"/g,'""')+'"' : v;
+}
+function buildCSV(){
+  var rows=[COLS.join(";")];
+  S.shurfy.forEach(function(sh){
+    var t=tState(sh);
+    var head=[sh.num,new Date(sh.date).toLocaleString("ru-RU"),sh.relief,sh.slope,
+      sh.exposure,sh.water,sh.surface,sh.vegType,sh.vegCover,sh.vegDom,sh.moisture,
+      sh.disturb,sh.shurfSize,sh.oriented?"да":"нет",sh.wall,sh.conditions,
+      Math.round(t.ms/1000),Math.round(t.pause/1000),sh.fatigue,
+      sh.extraShots.length?sh.extraShots:"нет",
+      sh.totalDepth,sh.thaw,sh.ggv,sh.stopReason,sh.cultural,sh.finds,
+      sh.recult?"да":"нет",sh.note];
+    var ls = sh.layers.length ? sh.layers : [null];
+    ls.forEach(function(L,i){
+      var tail = L ? [i+1,L.granulo,L.color,L.colorMod,L.colorState,L.density,L.wet,
+        L.aggr,L.aggrSize,L.aggrExpr,L.texture,L.interMm,L.interChar,L.incl,
+        L.rootsDiam,L.inclAbund,L.inclDistr,L.newform,L.hcl?"да":"нет",
+        L.last?"да":"нет",L.bndSharp,L.bndForm,L.thickFrom,L.thickTo,
+        L.depthFrom,L.depthTo,L.note,polemonLine(L)]
+        : new Array(COLS.length-head.length).fill("");
+      rows.push(head.concat(tail).map(cell).join(";"));
+    });
+  });
+  return rows.join("\r\n");
+}
+function download(name, text, mime){
+  try{
+    var b=new Blob(["﻿"+text],{type:mime+";charset=utf-8"});
+    var a=document.createElement("a");
+    a.href=URL.createObjectURL(b); a.download=name;
+    document.body.appendChild(a); a.click();
+    setTimeout(function(){URL.revokeObjectURL(a.href);a.remove();},1500);
+  }catch(e){
+    alert("Скачивание не сработало. Нажмите «Показать CSV» и скопируйте текст.");
+  }
+}
+
+/* ================================================================
+   СОБЫТИЯ
+   ================================================================ */
+document.getElementById("backBtn").onclick=function(){
+  if(view.name==="layer"||view.name==="finish") go("shurf");
+  else go("list");
+};
+
+document.getElementById("app").addEventListener("click",function(e){
+  var b=e.target.closest("button"); if(!b) return;
+
+  if(b.dataset.pick!==undefined){
+    var k=b.dataset.pick, v=b.dataset.val, multi=b.dataset.multi==="1";
+    var o=target();
+    if(multi){
+      var arr=o[k]||[]; var i=arr.indexOf(v);
+      if(i>=0) arr.splice(i,1); else arr.push(v);
+      o[k]=arr;
+    } else {
+      o[k] = (o[k]===v ? "" : v);
+    }
+    save(); render(); return;
+  }
+  if(b.dataset.more!==undefined){
+    var vn0=b.dataset.more;
+    openMore[vn0]=!openMore[vn0];
+    var boxes=document.querySelectorAll('[data-morebox="'+vn0+'"]');
+    for(var i=0;i<boxes.length;i++) boxes[i].classList.toggle("open", openMore[vn0]);
+    return;
+  }
+  if(b.dataset.own!==undefined){
+    var vn=b.dataset.own, key=b.dataset.key, m=b.dataset.multi==="1";
+    var val=prompt("Своё значение:");
+    if(val){
+      val=val.trim();
+      S.custom[vn]=S.custom[vn]||[];
+      if(S.custom[vn].indexOf(val)<0) S.custom[vn].push(val);
+      var o2=target();
+      if(m){ o2[key]=o2[key]||[]; if(o2[key].indexOf(val)<0) o2[key].push(val); }
+      else o2[key]=val;
+      save(); render();
+    }
+    return;
+  }
+  if(b.dataset.bool!==undefined){
+    target()[b.dataset.bool] = b.dataset.b==="1";
+    save(); render(); return;
+  }
+
+  var act=b.dataset.act;
+  if(!act) return;
+
+  if(act==="new"){
+    var n=prompt("Номер шурфа (как в Locus Map):");
+    if(!n) return;
+    n=n.trim();
+    if(S.shurfy.some(function(x){return x.num===n;}) &&
+       !confirm("Шурф "+n+" уже есть. Всё равно завести ещё один?")) return;
+    S.shurfy.push(newShurf(n)); save();
+    go("shurf", S.shurfy.length-1);
+  }
+  else if(act==="open"){ go("shurf", +b.dataset.i); }
+  else if(act==="start"){ timerStart(); render(); }
+  else if(act==="addlayer"){
+    var sh=cur();
+    if(!tState(sh).started) timerStart();
+    sh.layers.push(newLayer(sh.layers[sh.layers.length-1]));
+    save(); go("layer", view.si, sh.layers.length-1);
+  }
+  else if(act==="layer"){ go("layer", view.si, +b.dataset.i); }
+  else if(act==="toshurf"){ go("shurf"); }
+  else if(act==="dellayer"){
+    if(confirm("Удалить слой "+(view.li+1)+"? Отменить нельзя.")){
+      cur().layers.splice(view.li,1); save(); go("shurf");
+    }
+  }
+  else if(act==="finish"){ timerPause(); go("finish"); }
+  else if(act==="close"){
+    timerStop(); cur().closed=true; save(); go("list");
+  }
+  else if(act==="export"){ go("export"); }
+  else if(act==="dlcsv"){ download("stenon-"+stamp()+".csv", buildCSV(), "text/csv"); }
+  else if(act==="dljson"){ download("stenon-"+stamp()+".json", JSON.stringify(S,null,1), "application/json"); }
+  else if(act==="showcsv"){ var t1=document.getElementById("exportBox"); t1.value=buildCSV(); t1.select(); }
+  else if(act==="showjson"){ var t2=document.getElementById("exportBox"); t2.value=JSON.stringify(S,null,1); t2.select(); }
+  else if(act==="wipe"){
+    if(confirm("Стереть ВСЁ? Сначала выгрузите данные.") &&
+       confirm("Точно? Это необратимо.")){
+      S={shurfy:[],custom:{},plan:97}; save(); go("list");
+    }
+  }
+});
+
+/* ввод чисел и текста — сохраняем на каждый ввод */
+document.getElementById("app").addEventListener("input",function(e){
+  var el=e.target;
+  if(el.dataset.num!==undefined){ target()[el.dataset.num]=el.value; save(); }
+  else if(el.dataset.txt!==undefined){ target()[el.dataset.txt]=el.value; save(); }
+});
+
+function stamp(){
+  var d=new Date(), p=function(x){return String(x).padStart(2,"0");};
+  return d.getFullYear()+p(d.getMonth()+1)+p(d.getDate())+"-"+p(d.getHours())+p(d.getMinutes());
+}
+
+window.addEventListener("beforeunload",function(){ save(); });
+
+render();
+</script>
+<script>
+/* офлайн-кэш: после первой загрузки страница живёт без сети */
+if("serviceWorker" in navigator){
+  window.addEventListener("load",function(){
+    navigator.serviceWorker.register("sw.js").catch(function(){});
+  });
+}
+</script>
+</body>
+</html>
