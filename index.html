@@ -3,109 +3,180 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-<meta name="theme-color" content="#111111">
+<meta name="theme-color" content="#f3f2ea" id="themeMeta">
+<script>try{var _t=localStorage.getItem("stenon_theme");document.documentElement.setAttribute("data-theme",_t==="night"?"night":"day");}catch(e){document.documentElement.setAttribute("data-theme","day");}</script>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
 <meta name="mobile-web-app-capable" content="yes">
 <title>Stenon — описание шурфов</title>
 <style>
-*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-html,body{margin:0;padding:0}
+/* Дизайн-язык взят из SEMA: сигнальный цвет, реперные уголки,
+   приборные подписи, границы 1.5px, две темы. */
+:root{ --radius:14px; --gap:12px; }
+
+html[data-theme="day"]{
+  --bg:#f3f2ea; --panel:#ffffff; --panel-solid:#ffffff; --ink:#11130d; --muted:#5c6150;
+  --line:rgba(0,0,0,.16); --btn:#ffffff; --btn-line:rgba(0,0,0,.22); --soft:#e7e6dc;
+  --hivis:#3c7a00; --amber:#9a5b00; --alert:#c2351a; --hivis-ink:#ffffff;
+}
+html[data-theme="night"]{
+  --bg:#0c0d0b; --panel:#161814; --panel-solid:#161814; --ink:#f4f6ee; --muted:#8a8f80;
+  --line:rgba(255,255,255,.14); --btn:#1d201a; --btn-line:rgba(255,255,255,.18); --soft:#141611;
+  --hivis:#c5ff2e; --amber:#ffb020; --alert:#ff5b3a; --hivis-ink:#0c0d0b;
+}
+
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;margin:0;padding:0}
+html,body{min-height:100%}
 body{
-  font:17px/1.35 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
-  background:#fff;color:#111;padding-bottom:96px;
+  background:var(--bg); color:var(--ink);
+  font:16px/1.35 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  padding-bottom:calc(env(safe-area-inset-bottom) + 40px);
+  transition:background .2s ease,color .2s ease;
 }
-h1{font-size:20px;margin:0}
-h2{font-size:17px;margin:22px 0 8px;padding-bottom:5px;border-bottom:2px solid #111}
-h2 .num{display:inline-block;min-width:24px;color:#888;font-weight:400}
-.wrap{padding:12px 12px 0}
+.mono{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace}
+.wrap{max-width:560px;margin:0 auto;padding:12px 14px 0}
 
-/* ---- верхняя панель ---- */
+/* ---------- верхняя панель ---------- */
 .top{
-  position:sticky;top:0;z-index:20;background:#111;color:#fff;
-  padding:8px 12px;display:flex;align-items:center;gap:10px;
+  position:sticky;top:0;z-index:20;background:var(--bg);
+  border-bottom:1.5px solid var(--line);
+  padding:calc(env(safe-area-inset-top) + 9px) 14px 9px;
+  display:flex;align-items:center;gap:9px;
 }
-.top .t-title{font-weight:600;font-size:16px;flex:1;min-width:0;
-  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.clock{font-variant-numeric:tabular-nums;font-size:19px;font-weight:700}
-.clock.paused{color:#ffb020}
-.tbtn{
-  background:#fff;color:#111;border:0;border-radius:8px;
-  padding:9px 13px;font-size:15px;font-weight:600;
-}
-.tbtn.ghost{background:#333;color:#fff}
+.brand{display:flex;flex-direction:column;line-height:1;min-width:0;flex:1}
+.brand .name{font-weight:800;font-size:15px;letter-spacing:.18em;text-transform:uppercase;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.brand .by{font-size:10px;color:var(--muted);margin-top:4px;letter-spacing:.12em;
+  text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.clock{display:flex;align-items:center;gap:6px;font-variant-numeric:tabular-nums;
+  font-weight:800;font-size:19px;color:var(--muted);flex:0 0 auto}
+.clock .dot{width:8px;height:8px;border-radius:50%;background:currentColor;opacity:.35}
+.clock.run{color:var(--hivis)}
+.clock.run .dot{opacity:1;animation:blip 1.6s ease-in-out infinite}
+.clock.paused{color:var(--amber)}
+@keyframes blip{50%{opacity:.25}}
+@media (prefers-reduced-motion:reduce){.clock.run .dot{animation:none}}
 
-/* ---- кнопки ---- */
-button{font-family:inherit}
-.big{
-  display:block;width:100%;padding:17px;margin:10px 0;
-  font-size:18px;font-weight:600;border:0;border-radius:12px;
-  background:#111;color:#fff;
-}
-.big.sec{background:#eceae6;color:#111}
-.big.danger{background:#fff;color:#a11;border:2px solid #a11}
-.row2{display:flex;gap:8px}
+.tbtn{background:var(--btn);border:1.5px solid var(--btn-line);color:var(--ink);
+  border-radius:11px;min-width:44px;height:42px;padding:0 11px;font:inherit;
+  font-weight:800;font-size:13px;letter-spacing:.06em;text-transform:uppercase;flex:0 0 auto}
+.tbtn.ghost{background:transparent;font-size:20px;font-weight:400;letter-spacing:0;
+  padding:0 9px;min-width:38px}
+.tbtn:active{transform:translateY(1px)}
+
+/* ---------- реперные уголки ---------- */
+.corner{position:absolute;width:13px;height:13px;pointer-events:none;opacity:.55}
+.corner::before,.corner::after{content:"";position:absolute;background:var(--hivis)}
+.corner::before{left:0;top:5.5px;width:13px;height:1.5px}
+.corner::after{top:0;left:5.5px;height:13px;width:1.5px}
+.c-tl{left:-1px;top:-1px}.c-tr{right:-1px;top:-1px}
+.c-bl{left:-1px;bottom:-1px}.c-br{right:-1px;bottom:-1px}
+
+/* ---------- заголовки ---------- */
+h1{font-size:22px;font-weight:800;letter-spacing:.02em;margin:4px 0 2px}
+h2{font-size:12px;font-weight:800;letter-spacing:.22em;text-transform:uppercase;
+  color:var(--muted);margin:26px 0 9px;padding-bottom:7px;
+  border-bottom:1.5px solid var(--line);display:flex;align-items:center;gap:9px}
+h2 .num{display:inline-flex;align-items:center;justify-content:center;
+  width:21px;height:21px;border-radius:6px;background:var(--hivis);color:var(--hivis-ink);
+  font-size:11px;letter-spacing:0;flex:0 0 auto}
+label.f{display:block;font-weight:700;margin:15px 0 6px;font-size:14.5px}
+label.f .sub{font-weight:400;color:var(--muted);font-size:12.5px;letter-spacing:.01em}
+.note{font-size:12.5px;color:var(--muted);margin:7px 0;letter-spacing:.02em}
+
+/* ---------- чипы ---------- */
+.chips{display:flex;flex-wrap:wrap;gap:7px;margin:2px 0 4px}
+.chip{border:1.5px solid var(--btn-line);background:var(--btn);color:var(--ink);
+  border-radius:12px;padding:11px 13px;font:inherit;font-size:15px;font-weight:600;
+  line-height:1.15;min-height:48px;text-align:left}
+.chip .hint{display:block;font-size:11.5px;color:var(--muted);margin-top:3px;font-weight:400}
+.chip.on{background:var(--ink);color:var(--bg);border-color:transparent}
+.chip.on .hint{color:var(--bg);opacity:.7}
+.chip.aux{border-style:dashed;background:transparent;color:var(--muted);
+  font-size:12px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;min-height:44px}
+.chip:active{transform:translateY(1px)}
+.more{display:none;padding:9px;margin:5px 0;background:var(--soft);
+  border:1.5px dashed var(--line);border-radius:12px}
+.more.open{display:block}
+
+/* ---------- поля ввода ---------- */
+input[type=text],input[type=number],textarea{
+  width:100%;padding:12px 13px;font-family:inherit;font-size:16px;
+  border:1.5px solid var(--btn-line);border-radius:12px;
+  background:var(--panel-solid);color:var(--ink)}
+input[type=number]{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  font-weight:800;font-size:19px;text-align:center;letter-spacing:.04em}
+input:focus,textarea:focus{outline:none;border-color:var(--hivis)}
+textarea{min-height:88px;resize:vertical;line-height:1.4}
+.pair{display:flex;align-items:center;gap:9px}
+.pair span{color:var(--muted);font-size:17px;flex:0 0 auto}
+
+/* ---------- крупные кнопки ---------- */
+.big{display:flex;align-items:center;justify-content:center;width:100%;min-height:62px;
+  margin:11px 0;padding:14px;border:1.5px solid transparent;border-radius:var(--radius);
+  background:var(--ink);color:var(--bg);
+  font:inherit;font-weight:800;font-size:16px;letter-spacing:.08em;text-transform:uppercase}
+.big.hivis{background:var(--hivis);color:var(--hivis-ink)}
+.big.sec{background:var(--btn);color:var(--ink);border-color:var(--btn-line)}
+.big.danger{background:transparent;color:var(--alert);border-color:var(--alert)}
+.big:active{transform:translateY(1px)}
+.row2{display:flex;gap:9px}
 .row2>*{flex:1}
 
-/* ---- чипы ---- */
-.chips{display:flex;flex-wrap:wrap;gap:7px;margin:2px 0 4px}
-.chip{
-  border:2px solid #c9c5be;background:#fff;color:#111;
-  border-radius:10px;padding:11px 13px;font-size:15px;line-height:1.15;
-  min-height:46px;text-align:left;
-}
-.chip.on{background:#111;color:#fff;border-color:#111}
-.chip .hint{display:block;font-size:12px;color:#6b6b6b;margin-top:3px}
-.chip.on .hint{color:#c9c9c9}
-.chip.aux{border-style:dashed;color:#444;font-weight:600}
-.more{display:none;padding:8px;margin:4px 0;background:#f5f3f0;border-radius:10px}
-.more.open{display:block}
-label.f{display:block;font-weight:600;margin:14px 0 5px;font-size:15px}
-label.f .sub{font-weight:400;color:#777;font-size:13px}
+/* ---------- карточки ---------- */
+.card{position:relative;background:var(--panel);border:1.5px solid var(--line);
+  border-radius:var(--radius);padding:13px;margin:9px 0;display:flex;align-items:center;gap:12px}
+.card .n{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  font-size:26px;font-weight:800;min-width:44px;letter-spacing:.02em}
+.card .m{flex:1;min-width:0;font-size:12.5px;color:var(--muted);letter-spacing:.02em}
+.card .m b{display:block;font-size:11px;font-weight:800;letter-spacing:.16em;
+  text-transform:uppercase;margin-bottom:3px;color:var(--amber)}
+.card .m b.done{color:var(--hivis)}
+.card .go{background:var(--btn);border:1.5px solid var(--btn-line);color:var(--ink);
+  border-radius:11px;padding:11px 13px;font:inherit;font-weight:800;font-size:12px;
+  letter-spacing:.08em;text-transform:uppercase;flex:0 0 auto}
+.card .go:active{transform:translateY(1px)}
 
-/* ---- поля ---- */
-input[type=text],input[type=number],textarea{
-  width:100%;padding:13px;font-size:17px;font-family:inherit;
-  border:2px solid #c9c5be;border-radius:10px;background:#fff;color:#111;
-}
-textarea{min-height:84px;resize:vertical}
-.pair{display:flex;align-items:center;gap:8px}
-.pair span{color:#777;font-size:15px}
+.counter{position:relative;background:var(--panel);border:1.5px solid var(--line);
+  border-radius:var(--radius);padding:17px 14px;text-align:center;margin:4px 0 2px}
+.counter b{display:block;font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  font-size:38px;font-weight:800;line-height:1;letter-spacing:.02em}
+.counter .cap{display:block;font-size:11px;letter-spacing:.22em;text-transform:uppercase;
+  color:var(--muted);margin-top:9px}
 
-/* ---- список слоёв / шурфов ---- */
-.card{
-  border:2px solid #ddd9d3;border-radius:12px;padding:12px;margin:8px 0;
-  display:flex;align-items:center;gap:10px;
-}
-.card .n{font-size:22px;font-weight:700;min-width:38px}
-.card .m{flex:1;min-width:0;font-size:14px;color:#555}
-.card .m b{display:block;color:#111;font-size:16px;font-weight:600}
-.card .go{background:#eceae6;border:0;border-radius:8px;padding:10px 12px;font-size:15px}
-.counter{background:#f5f3f0;border-radius:12px;padding:12px;text-align:center;
-  font-size:15px;color:#555}
-.counter b{font-size:26px;display:block;color:#111}
-.note{font-size:13px;color:#777;margin:6px 0}
-.warn{background:#fff5e0;border-left:4px solid #e0a020;padding:10px;
-  border-radius:0 8px 8px 0;font-size:14px;margin:10px 0}
-.saved{position:fixed;bottom:12px;right:12px;background:#111;color:#fff;
-  padding:7px 12px;border-radius:20px;font-size:13px;opacity:0;
-  transition:opacity .25s;pointer-events:none;z-index:50}
-.saved.show{opacity:.85}
-.alarm{background:#a11;color:#fff;padding:12px;border-radius:10px;
-  font-size:15px;font-weight:600;margin:8px 0;line-height:1.4}
-.alarm b{font-weight:700;word-break:break-all}
+/* ---------- предупреждения ---------- */
+.warn{border:1.5px dashed var(--line);border-radius:12px;padding:11px 13px;
+  font-size:13.5px;color:var(--muted);margin:11px 0;line-height:1.4}
+.alarm{border:1.5px solid var(--alert);border-radius:12px;padding:13px;
+  color:var(--alert);font-size:14px;font-weight:700;margin:9px 0;line-height:1.45}
+.alarm b{word-break:break-all}
+
+/* ---------- всплывающая отметка ---------- */
+.saved{position:fixed;top:calc(env(safe-area-inset-top) + 8px);left:50%;
+  transform:translateX(-50%) translateY(-200%);background:var(--ink);color:var(--bg);
+  padding:10px 17px;border-radius:11px;font-size:12px;font-weight:800;letter-spacing:.14em;
+  text-transform:uppercase;z-index:60;transition:transform .22s ease;pointer-events:none}
+.saved.show{transform:translateX(-50%) translateY(0)}
+
+.ver{text-align:center;font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  font-size:11px;letter-spacing:.14em;color:var(--muted);margin:18px 0 6px}
+#exportBox{min-height:220px;font-size:12px;
+  font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-weight:400;text-align:left}
 .hidden{display:none}
-#exportBox{min-height:220px;font-size:12px;font-family:ui-monospace,Menlo,Consolas,monospace}
 </style>
 </head>
 <body>
 
 <div class="top">
-  <button class="tbtn ghost" id="backBtn">‹</button>
-  <div class="t-title" id="topTitle">Stenon</div>
-  <div class="clock" id="clock"></div>
+  <button class="tbtn ghost" id="backBtn" aria-label="Назад">‹</button>
+  <div class="brand">
+    <span class="name mono" id="topTitle">Stenon</span>
+    <span class="by" id="topSub">описание шурфов</span>
+  </div>
+  <div class="clock" id="clock"><span class="dot"></span><span id="clockVal"></span></div>
   <button class="tbtn" id="timerBtn"></button>
+  <button class="tbtn ghost" id="themeBtn" aria-label="Тема">☾</button>
 </div>
 
 <div class="wrap" id="app"></div>
@@ -119,7 +190,7 @@ textarea{min-height:84px;resize:vertical}
    ================================================================ */
 /* Версия. Поднимать вместе с CACHE в sw.js при каждой правке —
    по ней видно, получил ли телефон обновление. */
-var APP_VERSION = "1 · 22.08.2026";
+var APP_VERSION = "2 · 22.08.2026";
 
 var KEY = "stenon_shurfy_v1";
 
@@ -399,13 +470,15 @@ function timerStop(){
 var tickT;
 function tick(){
   clearTimeout(tickT);
-  var c=document.getElementById("clock"), b=document.getElementById("timerBtn");
+  var c=document.getElementById("clock"), cv=document.getElementById("clockVal"),
+      b=document.getElementById("timerBtn");
   var sh = (view.name==="list"||view.name==="export") ? null : cur();
-  if(!sh){ c.textContent=""; b.classList.add("hidden"); return; }
+  if(!sh){ c.classList.add("hidden"); b.classList.add("hidden"); return; }
   var t=tState(sh);
+  c.classList.remove("hidden");
   b.classList.remove("hidden");
-  c.textContent = fmt(t.ms);
-  c.className = "clock" + (t.run?"":" paused");
+  cv.textContent = fmt(t.ms);
+  c.className = "clock" + (t.run ? " run" : (t.started ? " paused" : ""));
   b.textContent = t.run ? "пауза" : (t.started ? "пуск" : "старт");
   b.onclick = t.run ? timerPause : timerStart;
   if(t.run) tickT=setTimeout(tick,1000);
@@ -540,10 +613,13 @@ function target(){ return _target; }
 /* ================================================================
    ЭКРАНЫ
    ================================================================ */
+function setTop(name, sub){
+  document.getElementById("topTitle").textContent=name;
+  document.getElementById("topSub").textContent=sub;
+}
 function render(){
   var app=document.getElementById("app");
   var back=document.getElementById("backBtn");
-  var title=document.getElementById("topTitle");
   var y=window.scrollY;                       /* не терять место при каждом нажатии */
   back.style.visibility = (view.name==="list") ? "hidden" : "visible";
 
@@ -552,30 +628,39 @@ function render(){
     'Откройте Stenon с домашнего экрана или по ссылке в браузере, ' +
     'а не из файлового менеджера.</div>';
 
-  if(view.name==="list"){ title.textContent="Stenon"; app.innerHTML=alarm+viewList(); }
-  else if(view.name==="shurf"){ title.textContent="Шурф "+cur().num; app.innerHTML=alarm+viewShurf(); }
-  else if(view.name==="layer"){ title.textContent="Шурф "+cur().num+" · слой "+(view.li+1); app.innerHTML=alarm+viewLayer(); }
-  else if(view.name==="finish"){ title.textContent="Шурф "+cur().num+" · закрытие"; app.innerHTML=alarm+viewFinish(); }
-  else if(view.name==="export"){ title.textContent="Экспорт"; app.innerHTML=alarm+viewExport(); }
+  if(view.name==="list"){
+    setTop("Stenon","описание шурфов"); app.innerHTML=alarm+viewList(); }
+  else if(view.name==="shurf"){
+    setTop("Шурф "+cur().num, cur().layers.length ? "слоёв "+cur().layers.length : "слоёв ещё нет");
+    app.innerHTML=alarm+viewShurf(); }
+  else if(view.name==="layer"){
+    setTop("Шурф "+cur().num, "слой "+(view.li+1)+" из "+cur().layers.length);
+    app.innerHTML=alarm+viewLayer(); }
+  else if(view.name==="finish"){
+    setTop("Шурф "+cur().num, "закрытие"); app.innerHTML=alarm+viewFinish(); }
+  else if(view.name==="export"){
+    setTop("Экспорт","выгрузка данных"); app.innerHTML=alarm+viewExport(); }
   window.scrollTo(0,y);
   tick();
 }
 
 function viewList(){
   var done=S.shurfy.filter(function(x){return x.closed;}).length;
-  var h='<div class="counter"><b>'+done+" из "+S.plan+"</b>шурфов закрыто · всего записей: "+S.shurfy.length+'</div>';
-  h+='<button class="big" data-act="new">+ Новый шурф</button>';
+  var h='<div class="counter">'+CORNERS+'<b>'+done+" / "+S.plan+
+        '</b><span class="cap">шурфов закрыто</span></div>';
+  h+='<button class="big hivis" data-act="new">+ Новый шурф</button>';
   if(!S.shurfy.length) h+='<p class="note">Пусто. Заведите первый шурф.</p>';
   S.shurfy.slice().reverse().forEach(function(sh){
     var i=S.shurfy.indexOf(sh), t=tState(sh);
-    h+='<div class="card"><div class="n">'+esc(sh.num)+'</div><div class="m"><b>'+
+    h+='<div class="card">'+CORNERS+'<div class="n">'+esc(sh.num)+'</div>'+
+       '<div class="m"><b'+(sh.closed?' class="done"':'')+'>'+
        (sh.closed?"закрыт":"в работе")+'</b>'+
        new Date(sh.date).toLocaleDateString("ru-RU")+" · слоёв "+sh.layers.length+
        " · "+fmt(t.ms)+'</div>'+
        '<button class="go" data-act="open" data-i="'+i+'">открыть</button></div>';
   });
   h+='<button class="big sec" data-act="export">Экспорт и выгрузка</button>';
-  h+='<p class="note" style="text-align:center">Stenon '+APP_VERSION+'</p>';
+  h+='<p class="ver">Stenon '+APP_VERSION+'</p>';
   return h;
 }
 
@@ -587,13 +672,14 @@ function viewShurf(){
   if(!t.started){
     h+='<div class="warn">Рельеф, растительность и обстановку заполняете в конце, ' +
        'на экране закрытия. Сейчас — только запустить таймер и описывать слои сверху вниз.</div>';
-    h+='<button class="big" data-act="start">Начать описание</button>';
+    h+='<button class="big hivis" data-act="start">Начать описание</button>';
   }
   h+=pick("Условия","conditions","conditions",true,"можно отметить позже");
   h+='<h2>Слои</h2>';
   sh.layers.forEach(function(L,i){
     var s=[L.granulo.join(", "),L.color].filter(Boolean).join(" · ");
-    h+='<div class="card"><div class="n">'+(i+1)+'</div><div class="m"><b>'+
+    h+='<div class="card">'+CORNERS+'<div class="n">'+(i+1)+'</div><div class="m"><b'+
+       (L.granulo.length?' class="done"':'')+'>'+
        (esc(s)||"не описан")+'</b>'+
        (L.thickFrom!==""?"мощность "+esc(L.thickFrom)+(L.thickTo!==""?"–"+esc(L.thickTo):"")+" см":"")+
        (L.last?" · последний":"")+'</div>'+
@@ -666,7 +752,7 @@ function viewLayer(){
   h+='<h2><span class="num">9</span>Заметка</h2>';
   h+=txt("Свободный текст","note","можно надиктовать голосовым вводом клавиатуры",true);
 
-  h+='<button class="big" data-act="toshurf">Готово, к списку слоёв</button>';
+  h+='<button class="big hivis" data-act="toshurf">Готово, к слоям</button>';
   h+='<div class="row2"><button class="big sec" data-act="addlayer">+ Следующий слой</button></div>';
   h+='<button class="big danger" data-act="dellayer">Удалить слой '+(view.li+1)+'</button>';
   return h;
@@ -711,7 +797,7 @@ function viewFinish(){
   h+=pick("Самооценка усталости","fatigue","fatigue",false);
   h+=txt("Заметка по шурфу","note","",true);
 
-  h+='<button class="big" data-act="close">Закрыть шурф</button>';
+  h+='<button class="big hivis" data-act="close">Закрыть шурф</button>';
   h+='<button class="big sec" data-act="toshurf">Назад к слоям</button>';
   return h;
 }
@@ -851,6 +937,26 @@ function download(name, text, mime){
 /* ================================================================
    СОБЫТИЯ
    ================================================================ */
+/* ---- тема: день по умолчанию, ночь по кнопке ---- */
+function applyTheme(t){
+  document.documentElement.setAttribute("data-theme",t);
+  var m=document.getElementById("themeMeta");
+  if(m) m.setAttribute("content", t==="night" ? "#0c0d0b" : "#f3f2ea");
+  var b=document.getElementById("themeBtn");
+  if(b) b.textContent = t==="night" ? "☀" : "☾";
+}
+function toggleTheme(){
+  var t = document.documentElement.getAttribute("data-theme")==="night" ? "day" : "night";
+  try{ localStorage.setItem("stenon_theme", t); }catch(e){}
+  applyTheme(t);
+}
+document.getElementById("themeBtn").onclick=toggleTheme;
+applyTheme(document.documentElement.getAttribute("data-theme")||"day");
+
+/* реперные уголки — на карточки и счётчик */
+var CORNERS='<span class="corner c-tl"></span><span class="corner c-tr"></span>'+
+            '<span class="corner c-bl"></span><span class="corner c-br"></span>';
+
 document.getElementById("backBtn").onclick=function(){
   if(view.name==="layer"||view.name==="finish") go("shurf");
   else go("list");
