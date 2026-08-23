@@ -192,7 +192,7 @@ html[data-theme="night"] .big.amber{color:#0c0d0b}
    ================================================================ */
 /* Версия. Поднимать вместе с CACHE в sw.js при каждой правке —
    по ней видно, получил ли телефон обновление. */
-var APP_VERSION = "3 · 22.08.2026";
+var APP_VERSION = "4 · 22.08.2026";
 
 var KEY = "stenon_shurfy_v1";
 
@@ -693,6 +693,7 @@ function viewShurf(){
   });
   h+='<button class="big" data-act="addlayer">+ Слой '+(sh.layers.length+1)+'</button>';
   h+='<button class="big sec" data-act="finish">Завершить шурф</button>';
+  h+='<button class="big danger" data-act="delshurf">Удалить шурф '+esc(sh.num)+'</button>';
   return h;
 }
 
@@ -1039,6 +1040,15 @@ document.getElementById("app").addEventListener("click",function(e){
     if(confirm("Удалить слой "+(view.li+1)+"? Отменить нельзя.")){
       cur().layers.splice(view.li,1); save(); go("shurf");
     }
+  }
+  else if(act==="delshurf"){
+    var shD=cur();
+    var n=prompt("Удалить шурф "+shD.num+" со всеми слоями?\n\n"+
+                 "Отменить нельзя. Введите номер шурфа для подтверждения:");
+    if(n===null) return;
+    if(n.trim()!==String(shD.num).trim()){ alert("Номер не совпал. Шурф на месте."); return; }
+    S.shurfy.splice(view.si,1);
+    save(); go("list");
   }
   else if(act==="finish"){ timerPause(); go("finish"); }
   else if(act==="close"){
