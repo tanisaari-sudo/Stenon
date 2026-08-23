@@ -1,5 +1,5 @@
 /* Офлайн-кэш. Версию менять при каждом обновлении страницы. */
-var CACHE = "stenon-v6";
+var CACHE = "stenon-v7";
 var FILES = ["./", "./index.html", "./manifest.webmanifest", "./icon-192.png", "./icon-512.png", "./icon-maskable.png"];
 
 self.addEventListener("install", function(e){

@@ -192,7 +192,7 @@ html[data-theme="night"] .big.amber{color:#0c0d0b}
    ================================================================ */
 /* Версия. Поднимать вместе с CACHE в sw.js при каждой правке —
    по ней видно, получил ли телефон обновление. */
-var APP_VERSION = "6 · 22.08.2026";
+var APP_VERSION = "7 · 22.08.2026";
 
 var KEY = "stenon_shurfy_v1";
 
@@ -541,7 +541,7 @@ function newLayer(prev){
     aggr:"",aggrSize:"",aggrExpr:"",
     texture:"",interMm:"",interChar:"",
     incl:[],rootsDiam:"",inclAbund:"",inclDistr:"",
-    newform:[],hcl:false,
+    newform:[],
     last:false,bndSharp:"",bndForm:"",
     thickFrom:"",thickTo:"",
     depthFrom:(prev&&prev.depthTo!==""?prev.depthTo:""),depthTo:"",
@@ -761,7 +761,6 @@ function viewLayer(){
   h+='<h2><span class="num">6</span>Новообразования</h2>';
   h+=pick("Новообразования","newform","newform",true,
           "продукты почвообразования — отдельно от включений");
-  h+=toggle("Вскипает от HCl","hcl");
 
   h+='<h2><span class="num">7</span>Нижняя граница</h2>';
   h+=toggle("Это последний слой (подошва не видна)","last");
@@ -897,7 +896,6 @@ function polemonLine(L){
   }
   if(L.newform.length && L.newform.indexOf("новообразований нет")<0)
     p.push("Новообразования: "+L.newform.join(", ")+".");
-  if(L.hcl) p.push("Вскипает от HCl.");
   if(L.last) p.push("Слой однороден по составу на всю видимую мощность.");
   else if(L.bndSharp||L.bndForm)
     p.push("Нижняя граница "+[L.bndSharp.replace(/\s*\(.*?\)/,""),L.bndForm]
@@ -918,7 +916,7 @@ var COLS=["номер_шурфа","дата","форма_рельефа","укл
 "плотность","влажность","агрегаты","агрегаты_размер","агрегаты_выраженность",
 "текстура","прослойки_мм","прослойки_характер",
 "включения","корни_диаметр_мм","включения_обилие","включения_распределение",
-"новообразования","hcl","последний_слой","граница_резкость","граница_форма",
+"новообразования","последний_слой","граница_резкость","граница_форма",
 "мощность_от","мощность_до","глубина_от","глубина_до","заметка_слоя","строка_полемона"];
 
 function cell(v){
@@ -942,7 +940,7 @@ function buildCSV(){
     ls.forEach(function(L,i){
       var tail = L ? [i+1,L.granulo,L.color,L.colorMod,L.colorState,L.density,L.wet,
         L.aggr,L.aggrSize,L.aggrExpr,L.texture,L.interMm,L.interChar,L.incl,
-        L.rootsDiam,L.inclAbund,L.inclDistr,L.newform,L.hcl?"да":"нет",
+        L.rootsDiam,L.inclAbund,L.inclDistr,L.newform,
         L.last?"да":"нет",L.bndSharp,L.bndForm,L.thickFrom,L.thickTo,
         L.depthFrom,L.depthTo,L.note,polemonLine(L)]
         : new Array(COLS.length-head.length).fill("");
