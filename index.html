@@ -192,7 +192,7 @@ html[data-theme="night"] .big.amber{color:#0c0d0b}
    ================================================================ */
 /* Версия. Поднимать вместе с CACHE в sw.js при каждой правке —
    по ней видно, получил ли телефон обновление. */
-var APP_VERSION = "5 · 22.08.2026";
+var APP_VERSION = "6 · 22.08.2026";
 
 var KEY = "stenon_shurfy_v1";
 
@@ -301,9 +301,15 @@ conditions:{main:[
  "утро","день","вечер"],more:[]},
 
 /* ---- слой ---- */
+/* Критерии — метод шнура: раскатать влажный грунт между ладонями. */
 granulo:{main:[
- "песок","супесь","лёгкий суглинок","средний суглинок","тяжёлый суглинок",
- "глина","торф","дресва, щебень","галечник"],
+ ["песок","комок рассыпается"],
+ ["супесь","шнур не образуется, только комок"],
+ ["лёгкий суглинок","шнур раскатывается с трудом, распадается"],
+ ["средний суглинок","шнур трескается при раскатке"],
+ ["тяжёлый суглинок","шнур трескается при сворачивании в кольцо"],
+ ["глина","шнур тонкий, не рвётся, поверхность блестит"],
+ "торф","дресва, щебень","галечник"],
  more:[
  ["алеврит","пылеватый, тоньше песка, не пластичный как глина"],
  ["гравий",""],
@@ -334,11 +340,22 @@ colorMod:{main:["однородный","с пятнами","с прожилка�
 colorState:{main:["во влажном состоянии","в подсохшем состоянии"],more:[]},
 
 /* Шкала сложения по стандарту + мёрзлый для Чукотки */
-density:{main:["рыхлый","рассыпчатый","мягкий","уплотнённый","плотный",
- "очень плотный","мёрзлый"],more:[]},
+density:{main:[
+ ["рыхлый","нож входит без усилия, грунт осыпается"],
+ ["рассыпчатый","не связан, сыпется"],
+ ["мягкий","нож входит легко, форма сохраняется"],
+ ["уплотнённый","нож входит с усилием"],
+ ["плотный","нож входит только при давлении"],
+ ["очень плотный","нож не входит, нужна кирка"],
+ "мёрзлый"],more:[]},
 
 /* Строго шкальная влажность. «Насыщенный водой» вне шкалы — исключён. */
-wet:{main:["сухой","свежий","влажный","сырой","мокрый"],more:[]},
+wet:{main:[
+ ["сухой","пылит"],
+ ["свежий","не пылит, не мажется"],
+ ["влажный","мажется, холодит руку"],
+ ["сырой","вода выжимается при сжатии"],
+ ["мокрый","вода стоит в разрезе"]],more:[]},
 
 aggr:{main:["агрегаты не выражены","зернистая","комковатая","глыбистая",
  "массивная","плитчатая","ореховатая"],
@@ -543,6 +560,14 @@ function isOn(val, v, multi){
   return multi ? (val||[]).indexOf(v)>=0 : val===v;
 }
 
+/* пункт словаря — либо "термин", либо ["термин","подсказка"] */
+function pair(x){ return Array.isArray(x) ? x : [x,""]; }
+function chipHTML(p, key, val, multi){
+  return '<button class="chip'+(isOn(val,p[0],multi)?' on':'')+'" data-pick="'+esc(key)+
+         '" data-val="'+esc(p[0])+'" data-multi="'+(multi?1:0)+'">'+esc(p[0])+
+         (p[1]?'<span class="hint">'+esc(p[1])+'</span>':'')+'</button>';
+}
+
 /* какие блоки «ещё» сейчас раскрыты — переживает перерисовку */
 var openMore = {};
 
@@ -555,14 +580,15 @@ function pick(label, key, vocabName, multi, sub){
   /* выбранное из «ещё» показываем и в основном ряду: иначе выбор не виден,
      когда блок свёрнут */
   var chosen = multi ? (val||[]) : (val?[val]:[]);
+  var mainPairs = vc.main.map(pair);
+  var mainTerms = mainPairs.map(function(p){ return p[0]; });
   var raised = chosen.filter(function(t){
-    return vc.main.indexOf(t)<0 && custom.indexOf(t)<0;
+    return mainTerms.indexOf(t)<0 && custom.indexOf(t)<0;
   });
   var h = '<label class="f">'+esc(label)+(sub?' <span class="sub">'+esc(sub)+'</span>':'')+'</label>';
   h += '<div class="chips">';
-  vc.main.concat(custom).concat(raised).forEach(function(t){
-    h += '<button class="chip'+(isOn(val,t,multi)?' on':'')+'" data-pick="'+esc(key)+
-         '" data-val="'+esc(t)+'" data-multi="'+(multi?1:0)+'">'+esc(t)+'</button>';
+  mainPairs.concat(custom.map(pair)).concat(raised.map(pair)).forEach(function(p){
+    h += chipHTML(p, key, val, multi);
   });
   if(vc.more.length)
     h += '<button class="chip aux" data-more="'+esc(vocabName)+'">ещё ▾</button>';
@@ -571,11 +597,7 @@ function pick(label, key, vocabName, multi, sub){
   h += '</div>';
   if(vc.more.length){
     h += '<div class="more'+(openMore[vocabName]?' open':'')+'" data-morebox="'+esc(vocabName)+'"><div class="chips">';
-    vc.more.forEach(function(p){
-      h += '<button class="chip'+(isOn(val,p[0],multi)?' on':'')+'" data-pick="'+esc(key)+
-           '" data-val="'+esc(p[0])+'" data-multi="'+(multi?1:0)+'">'+esc(p[0])+
-           (p[1]?'<span class="hint">'+esc(p[1])+'</span>':'')+'</button>';
-    });
+    vc.more.forEach(function(p){ h += chipHTML(pair(p), key, val, multi); });
     h += '</div></div>';
   }
   return h;
